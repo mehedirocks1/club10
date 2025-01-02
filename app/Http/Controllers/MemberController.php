@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Http;
+use Xenon\LaravelBDSms\Facades\SMS;
+use Xenon\LaravelBDSms\Provider\BulkSmsBD;
 
 class MemberController extends Controller
 {
@@ -161,25 +163,7 @@ public function update(Request $request, $id)
     return redirect()->route('admin.viewMembers')->with('success', 'Member details updated successfully.');
 }
 
-/*
-public function destroy($id)
-{
-    $admin = auth()->user();
 
-    // Manual role check (only allow if role_id is 1)
-    if ($admin->role_id != 1) {
-        abort(403, 'Unauthorized action.');
-    }
-
-    // Find member by ID and delete
-    $member = User::findOrFail($id);
-    $member->delete();
-
-    // Redirect back to members list with success message
-    return redirect()->route('admin.viewMembers')->with('success', 'Member deleted successfully.');
-}
-
-*/
 public function destroy($id)
 {
 // Ensure only an admin can perform this action
@@ -207,78 +191,31 @@ return view('backend.admin.send-sms', compact('member'));
 
 public function sendSMS(Request $request, $id)
 {
-// Retrieve the member information based on ID
-$member = User::findOrFail($id);
+    try {
+        // Retrieve the member information based on ID
+        $member = User::findOrFail($id);
 
-// Get the message from the form input
-$message = $request->message;
+        // Get the message from the form input
+        $message = $request->message;
 
-// Send SMS via BulkSMSBD API
-$response = $this->sms_send($member->mobile_number, $message);
+        // Send SMS via BulkSMSBD using the shoot method
+        $response = SMS::shoot($member->mobile_number, $message);
 
-// Log the response (You can store it in the database or check for success/failure)
-\Log::info("Response from BulkSMSBD API: {$response}");
+        // Log the successful SMS send
+        Log::info("SMS sent to {$member->mobile_number}: {$message}");
 
-// Redirect back to the members page with a success message
-return redirect()->route('admin.viewMembers')->with('success', 'SMS sent successfully!');
-}
+        // Log the response to check the API result
+        Log::info("BulkSMSBD API Response: " . $response);
 
+        // Redirect with a success message
+        return redirect()->route('admin.viewMembers')->with('success', 'SMS sent successfully!');
+    } catch (\Exception $e) {
+        // Log the error if SMS sending fails
+        Log::error("Failed to send SMS to {$member->mobile_number}: {$e->getMessage()}");
 
-/*
-// Bulk SMS send function
-private function sms_send($number, $message)
-{
-// Define the API URL
-$url = "http://bulksmsbd.net/api/smsapi";
-
-// Replace these with your actual API key and sender ID
-$api_key = "c0kGJBawNsKzQa6vsoSF";  // Add your actual API key here
-$senderid = "POJ CLUB";  // Add your sender ID here
-
-// Prepare the data for the request
-$data = [
-    "api_key" => $api_key,
-    "senderid" => $senderid,
-    "number" => $number,
-    "message" => $message
-];
-
-// Initialize cURL session
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
-curl_setopt($ch, CURLOPT_POST, 1);
-curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data)); // Correctly format the data
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-// Execute the request and capture the response
-$response = curl_exec($ch);
-
-// Close the cURL session
-curl_close($ch);
-
-// Return the response
-return $response;
-}
-*/
-
-
-private function sms_send($number, $message)
-{
-    $api_key = "c0kGJBawNsKzQa6vsoSF";  // Add your actual API key here
-    $senderid = "POJ CLUB";  // Add your sender ID here
-    $url = "http://bulksmsbd.net/api/smsapi";
-
-    // Use Laravel's HTTP Client (Guzzle)
-    $response = Http::asForm()->post($url, [
-        'api_key' => $api_key,
-        'senderid' => $senderid,
-        'number' => $number,
-        'message' => $message,
-    ]);
-
-    // Return the response
-    return $response->body();
+        // Handle any errors during SMS sending
+        return redirect()->route('admin.viewMembers')->with('error', 'Failed to send SMS: ' . $e->getMessage());
+    }
 }
 
 }

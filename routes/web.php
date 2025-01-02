@@ -16,9 +16,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\BackendController;
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\SslCommerzPaymentController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
-
+use Xenon\LaravelBDSms\Facades\SMS;
+use Xenon\LaravelBDSms\Provider\BulkSmsBD;
+//use SslCommerzNotification;
 
 // Frontend Routes
 Route::get('/', [FrontendController::class, 'home'])->name('frontend.home');
@@ -172,3 +175,27 @@ Route::post('/register', [RegistrationController::class, 'register'])->name('reg
 // Login Routes
 Route::get('/login', [LoginController::class, 'showForm'])->name('login.form');
 Route::post('/login', [LoginController::class, 'login'])->name('login.store');
+
+
+
+
+
+
+
+Route::group(['middleware'=>[config('sslcommerz.middleware','web')]], function () {
+    Route::get('/sslcommerz/example1', [SslCommerzPaymentController::class, 'exampleEasyCheckout']);
+    Route::get('/sslcommerz/example2', [SslCommerzPaymentController::class, 'exampleHostedCheckout']);
+    Route::post('/sslcommerz/pay', [SslCommerzPaymentController::class, 'index']);
+    //Route::post('/sslcommerz/pay-via-ajax', [SslCommerzPaymentController::class, 'payViaAjax']);
+    //Route::post('/sslcommerz/success', [SslCommerzPaymentController::class, 'success']);
+    //Route::post('/sslcommerz/fail', [SslCommerzPaymentController::class, 'fail']);
+    //Route::post('/sslcommerz/cancel', [SslCommerzPaymentController::class, 'cancel']);
+    //Route::post('/sslcommerz/ipn', [SslCommerzPaymentController::class, 'ipn']);
+    Route::post('/sslcommerz/pay-via-ajax', [SslCommerzPaymentController::class, 'payViaAjax'])->name('sslcommerz.pay-via-ajax');
+    Route::post('/sslcommerz/success', [SslCommerzPaymentController::class, 'success'])->name('sslcommerz.success');
+    Route::post('/sslcommerz/fail', [SslCommerzPaymentController::class, 'fail'])->name('sslcommerz.fail');
+    Route::post('/sslcommerz/cancel', [SslCommerzPaymentController::class, 'cancel'])->name('sslcommerz.cancel');
+    Route::post('/sslcommerz/ipn', [SslCommerzPaymentController::class, 'ipn'])->name('sslcommerz.ipn');
+
+    
+});
