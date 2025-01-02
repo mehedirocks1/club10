@@ -1,0 +1,81 @@
+.navbar-logo img {
+    max-height: 80px; /* Adjust logo size */
+  }
+
+
+/* Limit carousel height */
+#carouselExampleIndicators {
+max-height: 500px; /* Adjust height as needed */
+overflow: hidden;
+}
+
+#carouselExampleIndicators img {
+max-height: 500px;
+object-fit: cover; /* Makes images fit without distortion */
+}
+
+
+
+
+
+
+
+/* Background and form box styling */
+body {
+    background-color: #e1f7e1;  /* Light green background */
+  }
+  
+  .login-box {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+    max-width: 100%;
+    width: 400px;
+    margin: 0 auto;
+  }
+  
+  /* Image Box Styling */
+  .login-box img {
+    border-radius: 10px;
+    object-fit: cover;
+    height: 100%;
+    width: 100%;
+  }
+  
+  /* Form and Button Styling */
+  .form-control {
+    border-radius: 5px;
+    padding: 12px;
+    margin-bottom: 15px;
+  }
+  
+  .btn-dark {
+    background-color: #006400;
+    border-color: #006400;
+    padding: 12px;
+    border-radius: 5px;
+    color: #fff;
+  }
+  
+  .btn-dark:hover {
+    background-color: #004d00;
+    border-color: #003700;
+  }
+  
+  /* Forgot Password link styling */
+  a.text-decoration-none {
+    color: #006400;
+  }
+  
+  a.text-decoration-none:hover {
+    text-decoration: underline;
+    color: #004d00;
+  }
+  
+  /* Form Label Styling */
+  .form-label {
+    font-weight: bold;
+    color: #333;
+  }
+  

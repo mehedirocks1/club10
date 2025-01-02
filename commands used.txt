@@ -1,0 +1,47 @@
+php artisan make:controller FrontendController
+php artisan make:controller BackendController
+php artisan make:controller UserController
+php artisan make:controller RegistrationController
+php artisan make:controller LoginController
+php artisan make:controller DashboardController
+php artisan make:controller MemberController
+php artisan make:controller WebsiteController
+
+
+
+php artisan make:model AboutUs -mfs
+php artisan make:model Branch -mfs
+php artisan make:model Contact -mfs
+php artisan make:model Gallery -mfs
+php artisan make:model Team -mfs
+
+
+
+FOR HTTP API REQUEST
+composer require guzzlehttp/guzzle
+
+
+
+
+
+php artisan route:clear
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+php artisan route:cache
+php artisan config:cache
+
+
+php artisan route:list
+
+
+
+
+
+
+php artisan migrate:rollback
+php artisan migrate:reset
+php artisan migrate:fresh
+php artisan migrate
+php artisan db:seed
+php artisan migrate:fresh --seed

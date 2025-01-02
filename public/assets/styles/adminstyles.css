@@ -1,0 +1,102 @@
+body {
+    margin: 0;
+    height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    background-color: #343a40;
+    color: white;
+    padding: 20px;
+    height: 100vh; /* Full viewport height */
+    position: fixed;
+    width: 220px;
+    overflow-y: auto; /* Makes the sidebar scrollable if content overflows */
+}
+
+.sidebar h4 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+}
+
+.sidebar .nav-item a {
+    display: block;
+    padding: 10px 15px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background-color: #495057;
+}
+
+.sidebar .nav-item a:hover {
+    background-color: #17a2b8;
+}
+
+.submenu {
+    margin-left: 20px; /* Indentation for submenus */
+}
+
+.submenu .nav-link {
+    display: block; /* Ensure submenu is on its own line */
+    padding: 10px 15px;
+    position: relative;
+}
+
+.submenu .nav-link:before {
+    content: ""; /* Adds a circle before the text */
+    position: absolute;
+    left: -20px; /* Positions the circle to the left of the text */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%; /* Makes it a circle */
+    background-color: #17a2b8; /* Circle color */
+}
+
+.main-content {
+    margin-left: 220px;
+    padding: 20px;
+}
+
+.header {
+    background-color: #007bff;
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.header .user-info {
+    display: flex;
+    align-items: center;
+}
+
+.header .user-info span {
+    margin-right: 15px;
+}
+
+.header .user-info form {
+    margin: 0;
+}
+
+/* Adjust navbar for smaller screens */
+@media (max-width: 768px) {
+    .sidebar {
+        position: absolute;
+        z-index: 1000;
+        height: auto;
+        width: 100%;
+    }
+    .main-content {
+        margin-left: 0;
+    }
+}
