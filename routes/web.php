@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 use Xenon\LaravelBDSms\Facades\SMS;
 use Xenon\LaravelBDSms\Provider\BulkSmsBD;
-//use SslCommerzNotification;
+use Karim007\SslcommerzLaravel\SslCommerz\SslCommerzNotification;
+use Karim007\SslcommerzLaravel\Facade\SSLCommerzPayment;
 
 // Frontend Routes
 Route::get('/', [FrontendController::class, 'home'])->name('frontend.home');

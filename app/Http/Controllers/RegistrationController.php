@@ -21,8 +21,11 @@ use App\Mail\ResetPasswordMail; // Assuming you have this Mail class
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\MemberController;
 use App\Models\Payment;
-//use SslCommerzNotification;
+use Karim007\SslCommerz\SslCommerz;
+use Karim007\SslcommerzLaravel\Facade\SSLCommerzPayment;
 use App\Http\Controllers\SslCommerzPaymentController;
+use Karim007\SslcommerzLaravel\SslCommerz\SslCommerzNotification;
+
 
 
 class RegistrationController extends Controller
@@ -35,8 +38,7 @@ class RegistrationController extends Controller
     
     public function register(Request $request)
     {
-        Log::info('Registration started for user: ' . $request->email);
-    
+        // Validate the incoming request
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -51,7 +53,7 @@ class RegistrationController extends Controller
             'education' => 'required|in:high_school,bachelor,master,phd',
             'profession' => 'required|string|max:255',
             'skills' => 'required|string|max:255',
-            'password' => 'nullable|string|min:8|confirmed',
+            'password' => 'nullable|string|min:8|confirmed', // Password is nullable, as we will generate a random one
             'terms' => 'accepted',
             'country' => 'required|string|max:255',
             'division' => 'required|string|max:255',
@@ -60,9 +62,8 @@ class RegistrationController extends Controller
             'address' => 'required|string|max:255',
             'membership_type' => 'required|in:basic,premium,VIP',
         ]);
-    
-        Log::info('User validated successfully.');
-    
+        
+        // Determine registration fee based on membership type
         $registrationFee = 0;
         switch ($request->membership_type) {
             case 'basic':
@@ -75,29 +76,26 @@ class RegistrationController extends Controller
                 $registrationFee = 400;
                 break;
         }
-    
-        Log::info('Registration fee determined: ' . $registrationFee);
-    
+//Photo Uploading
         if ($request->hasFile('photo') && $request->file('photo')->isValid()) {
-            $timestamp = time();
-            $photoName = $request->first_name . '_' . $timestamp . '.' . $request->file('photo')->getClientOriginalExtension();
-            $photoPath = $request->file('photo')->move(public_path('profilepics'), $photoName);
-            Log::info('Photo uploaded: ' . $photoName);
+            $timestamp = time(); // Generate a timestamp
+            $photoName = $request->first_name . '_' . $timestamp . '.' . $request->file('photo')->getClientOriginalExtension(); // Combine first name and timestamp
+            $photoPath = $request->file('photo')->move(public_path('profilepics'), $photoName); // Save the file in the profilepics folder
         } else {
-            Log::error('No valid photo uploaded.');
             return back()->withErrors(['photo' => 'No valid photo uploaded.']);
         }
-    
-        $randomPassword = Str::random(12);
-        Log::info('Generated random password for user.');
-    
+        
+
+        // Generate a random password if not provided
+        $randomPassword = Str::random(12);  // Generate a random 12-character password
+
         try {
-            // Create user data
-            $user = DB::table('users')->insertGetId([
+            // Create the user with all validated data, including registration fee
+            $user = User::create([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'bangla_name' => $request->bangla_name,
-                'photo' => $photoPath,
+                'photo' => $photoPath,  // Store the file path
                 'email' => $request->email,
                 'mobile_number' => $request->mobile_number,
                 'dob' => $request->dob,
@@ -107,66 +105,41 @@ class RegistrationController extends Controller
                 'education' => $request->education,
                 'profession' => $request->profession,
                 'skills' => $request->skills,
-                'country' => $request->country,
-                'division' => $request->division,
-                'district' => $request->district,
-                'thana' => $request->thana,
-                'address' => $request->address,
-                'membership_type' => $request->membership_type,
-                'registration_fee' => $registrationFee,
-                'password' => Hash::make($randomPassword),
-                'role_id' => 3,  // Assuming role '3' for the user
+                'country' => $request->country,  // New field
+                'division' => $request->division,  // New field
+                'district' => $request->district,  // New field
+                'thana' => $request->thana,  // New field
+                'address' => $request->address,  // New field
+                'membership_type' => $request->membership_type,  // New field
+                'registration_fee' => $registrationFee,  // Save the registration fee
+                'password' => Hash::make($randomPassword), // Hash the random password
+                'role_id' => 3,  // Default role_id set to 3 (User role)
                 'terms' => 'accepted',
             ]);
-    
-            Log::info('User created successfully with ID: ' . $user);
-    
-            // Create order record in 'orders' table
-            $transactionId = uniqid();
-            DB::table('orders')->insert([
-                'user_id' => $user,
-                'amount' => $registrationFee,
-                'status' => 'Pending',
-                'transaction_id' => $transactionId,
-                'currency' => 'BDT',
-            ]);
-    
-            Log::info('Order created successfully with transaction ID: ' . $transactionId);
-    
-            // SSLCommerz payment request data
-            $sslcommerz_data = [
-                'total_amount' => $registrationFee,
-                'currency' => 'BDT',
-                'tran_id' => $transactionId,
-                'cus_name' => $request->first_name . ' ' . $request->last_name,
-                'cus_email' => $request->email,
-                'cus_phone' => $request->mobile_number,
-                'cus_add1' => $request->address,
-                'success_url' => route('sslcommerz.success'),
-                'fail_url' => route('sslcommerz.fail'),
-                'cancel_url' => route('sslcommerz.cancel'),
-                'emi_option' => 0,
-            ];
-    
-            // Initialize SSLCommerz
-            $sslCommerz = new SslCommerzNotification();
-            Log::info('SSLCommerz payment request data prepared.');
-    
-            // Make the payment request to SSLCommerz
-            $response = $sslCommerz->makePayment($sslcommerz_data, 'hosted');
-    
-            if ($response) {
-                Log::info('Payment request successful.');
-                return $response;
-            } else {
-                Log::error('Unable to process payment.');
-                return back()->withErrors(['payment_error' => 'Unable to process payment.']);
-            }
+        
+
+            // Manually set the email_verified_at field
+            $user->email_verified_at = now();
+        
+            // Generate and set the remember_token after user creation
+            $user->update(['remember_token' => Str::random(60)]);
+        
+            // Save the user with the updated remember_token
+            $user->save();
+            $this->sendPasswordSMS($user->mobile_number, $randomPassword);
+
+            // Send the password to the user via email
+            $this->sendPasswordEmail($user, $randomPassword);
+        
+            // Redirect to the success page
+            return redirect()->route('register.success');
         } catch (\Exception $e) {
+            // Handle errors
             Log::error('User registration failed: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Registration failed, please try again.']);
         }
     }
+
 
     
 

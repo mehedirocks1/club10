@@ -8,7 +8,7 @@
 <div class="container my-5">
   <h2>Registration Form</h2>
   <!-- Form with CSRF protection -->
-  <form class="row g-3 needs-validation" method="POST" action="{{ route('register.submit') }}" enctype="multipart/form-data" novalidate>
+  <form class="row g-3 needs-validation" method="POST" action="{{ url('/sslcommerz/pay') }}" enctype="multipart/form-data" novalidate>
     @csrf
 
     <!-- First Name -->
