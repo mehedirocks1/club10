@@ -8,6 +8,8 @@ use Karim007\SslcommerzLaravel\Facade\SSLCommerzPayment;
 use Karim007\SslcommerzLaravel\SslCommerz\SslCommerzNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use App\Models\Order;
 
 
 class SslCommerzPaymentController extends Controller
@@ -21,57 +23,7 @@ class SslCommerzPaymentController extends Controller
     {
         return view('sslcommerz::exampleHosted');
     }
-/*
-    public function index(Request $request)
-    {
-        $post_data = array();
-        $post_data['total_amount'] = '10'; // You cannot pay less than 10
-        $post_data['currency'] = "BDT";
-        $post_data['tran_id'] = uniqid(); // tran_id must be unique
 
-        $customer = array();
-        $customer['name']   = $request->input('first_name');
-        $customer['email'] = $request->input('email');
-        $customer['address_1']= $request->input('address');
-        $customer['address_2'] = "";
-        $customer['city']  = $request->input('district');
-        $customer['state'] = "";
-        $customer['postcode'] = "";
-        $customer['country'] = "Bangladesh";
-        $customer['phone'] = '8801XXXXXXXXX';
-        $customer['fax'] = "";
-
-        $s_info = array();
-        $s_info['shipping_method'] = 'Yes'; // Shipping method (YES/NO)
-        $s_info['num_of_item'] = 1; // Number of items
-        $s_info['ship_name'] = 'Abc'; // Shipping name
-        $s_info['ship_add1'] = 'Dhaka'; // Shipping address
-        $s_info['ship_add2'] = '';
-        $s_info['ship_city'] = 'Dhaka'; // Shipping city
-        $s_info['ship_state'] = '';
-        $s_info['ship_postcode'] = '1215'; // Shipping postcode
-        $s_info['ship_country'] = 'Bangladesh'; // Shipping country
-
-        $sslc = new SslCommerzNotification();
-        $sslc->setCustomerInfo($customer)->setShipmentInfo($s_info);
-
-        // Insert or update order status as Pending
-        DB::table('orders')
-            ->updateOrInsert([
-                'transaction_id' => $post_data['tran_id']
-            ], [
-                'name' => $post_data['name'],
-                'amount' => $post_data['total_amount'],
-                'status' => 'Pending',
-                'currency' => $post_data['currency']
-            ]);
-
-        // Initiate payment (false: redirect to gateway / true: show payment options)
-        $payment_options = $sslc->makePayment($post_data, 'hosted');
-        return $payment_options;
-    }
-
-*/
 
 public function index(Request $request)
 {
@@ -103,7 +55,7 @@ public function index(Request $request)
         $post_data['customer']['last_name'] = $request->input('last_name');
         $post_data['customer']['bangla_name'] = $request->input('bangla_name');
         
-    
+    /*.
         // If photo is a file, handle it
         if ($request->hasFile('photo')) {
             $photo = $request->file('photo');
@@ -112,7 +64,27 @@ public function index(Request $request)
         } else {
             $post_data['customer']['photo'] = $request->input('photo'); // If it's just a URL or existing path
         }
-    
+    */
+
+    // Photo Uploading
+    if ($request->hasFile('photo') && $request->file('photo')->isValid()) {
+        $timestamp = time(); // Generate a timestamp
+        $photoName = $request->first_name . '_' . $timestamp . '.' . $request->file('photo')->getClientOriginalExtension(); // Combine first name and timestamp
+        $photoPath = $request->file('photo')->move(public_path('profilepics'), $photoName); // Save the file in the profilepics folder
+        $post_data['customer']['photo'] = 'profilepics/' . $photoName; // Store the path
+    } else {
+        return back()->withErrors(['photo' => 'No valid photo uploaded.']);
+    }
+
+
+
+
+
+
+
+
+
+
         $post_data['customer']['email'] = $request->input('email');
         $post_data['customer']['education'] = $request->input('education');
         $post_data['customer']['mobile_number'] = $request->input('mobile_number');
@@ -244,7 +216,7 @@ public function index(Request $request)
         $payment_options = $sslc->makePayment($post_data, 'checkout', 'json');
         return $payment_options;
     }
-
+/*
     public function success(Request $request)
     {
         $tran_id = $request->input('tran_id');
@@ -267,6 +239,71 @@ public function index(Request $request)
         // Something went wrong, redirect customer to product page
         return SSLCommerzPayment::returnFail($tran_id, "Invalid Transaction", '/');
     }
+
+*/
+
+
+
+
+public function success(Request $request)
+{
+    $tran_id = $request->input('tran_id');
+    $amount = $request->input('amount');
+    $currency = $request->input('currency');
+
+    // Use Eloquent model to fetch order details
+    $order = Order::where('transaction_id', $tran_id)->first();
+
+    if (!$order) {
+        return back()->withErrors(['error' => 'Order not found for the given transaction ID.']);
+    }
+
+    if ($order->status == 'Pending') {
+        // Validate the transaction with SSLCommerz
+        $validation = SSLCommerzPayment::orderValidate($request->all(), $tran_id, $amount, $currency);
+
+        if ($validation) {
+            // Update the order status to 'Processing'
+            $order->update(['status' => 'Processing']);
+
+            // Prepare data for registration
+            $registrationData = [
+                'first_name' => $order->first_name,
+                'last_name' => $order->last_name,
+                'bangla_name' => $order->bangla_name,
+                'photo' => $order->photo,
+                'email' => $order->email,
+                'mobile_number' => $order->mobile_number,
+                'dob' => $order->dob,
+                'nid' => $order->nid,
+                'gender' => $order->gender,
+                'blood_group' => $order->blood_group,
+                'education' => $order->education,
+                'profession' => $order->profession,
+                'skills' => $order->skills,
+                'country' => $order->country,
+                'division' => $order->division,
+                'district' => $order->district,
+                'thana' => $order->thana,
+                'address' => $order->address,
+                'membership_type' => $order->membership_type,
+                'terms' => 'accepted',
+            ];
+
+            // Pass the registration data to the RegistrationController for further handling
+            return app(RegistrationController::class)->register($registrationData);
+        }
+    } elseif (in_array($order->status, ['Processing', 'Complete'])) {
+        return SSLCommerzPayment::returnSuccess($tran_id, "Transaction is successfully Completed", '/');
+    }
+
+    // Something went wrong
+    return SSLCommerzPayment::returnFail($tran_id, "Invalid Transaction", '/');
+}
+
+
+
+
 
     public function fail(Request $request)
     {

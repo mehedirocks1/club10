@@ -172,6 +172,8 @@ Route::middleware('auth')->prefix('admin')->name('admin.')->group(function () {
 Route::get('/register', [RegistrationController::class, 'showForm'])->name('register.form');
 Route::get('/register/success', [RegistrationController::class, 'success'])->name('register.success');
 Route::post('/register', [RegistrationController::class, 'register'])->name('register.submit');
+Route::post('/check-unique', [RegistrationController::class, 'checkUnique'])->name('check.unique');
+
 
 // Login Routes
 Route::get('/login', [LoginController::class, 'showForm'])->name('login.form');

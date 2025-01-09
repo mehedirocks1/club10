@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 use Xenon\LaravelBDSms\Facades\SMS;
 use Xenon\LaravelBDSms\Provider\BulkSmsBD;
@@ -25,8 +26,7 @@ use Karim007\SslCommerz\SslCommerz;
 use Karim007\SslcommerzLaravel\Facade\SSLCommerzPayment;
 use App\Http\Controllers\SslCommerzPaymentController;
 use Karim007\SslcommerzLaravel\SslCommerz\SslCommerzNotification;
-
-
+use App\Models\Order;
 
 class RegistrationController extends Controller
 {
@@ -35,7 +35,7 @@ class RegistrationController extends Controller
         return view('frontend.registration');
     }
 
-    
+    /*
     public function register(Request $request)
     {
         // Validate the incoming request
@@ -140,6 +140,126 @@ class RegistrationController extends Controller
         }
     }
 
+*/
+
+public function register(array $data)
+{
+    try {
+        // Log incoming data for debugging
+        Log::info('Registration data: ', $data);
+
+        // Validate the data
+        $validated = Validator::make($data, [
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'bangla_name' => 'nullable|string|max:255',
+            'photo' => 'nullable|string',
+            'email' => 'required|email|unique:users,email',
+            'mobile_number' => 'required|digits:11|unique:users,mobile_number',
+            'dob' => 'required|date',
+            'nid' => 'required|string|max:255|unique:users,nid',
+            'gender' => 'required|in:Male,Female,Other',
+            'blood_group' => 'required|in:A+,B+,O+,AB+,A-,B-,O-,AB-',
+            'education' => 'required|in:high_school,bachelor,master,phd',
+            'profession' => 'required|string|max:255',
+            'skills' => 'nullable|string|max:255',
+            'country' => 'required|string|max:255',
+            'division' => 'required|string|max:255',
+            'district' => 'required|string|max:255',
+            'thana' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'membership_type' => 'required|in:basic,premium,VIP',
+            // Removed registration_fee and terms validation
+        ]);
+
+        // Handle validation failure
+        if ($validated->fails()) {
+            Log::error('Validation failed: ', $validated->errors()->toArray());
+            throw new \Exception('Validation errors: ' . implode(', ', $validated->errors()->all()));
+        }
+
+        $validatedData = $validated->validated();
+
+        // Retrieve the registration fee (amount) from the orders table
+        $order = Order::where('user_id', auth()->id())
+                     ->orderBy('created_at', 'desc')
+                     ->first();
+
+        // Log order details
+        if ($order) {
+            Log::info('Order found: ', ['order_amount' => $order->amount]);
+        } else {
+            Log::error('No order found for the user.');
+            throw new \Exception('No order found to retrieve the registration fee.');
+        }
+
+        // Get the amount from the order and store it in the registration_fee column
+        $registrationFee = $order->amount;
+
+        // Generate a random password
+        $randomPassword = Str::random(12);
+        Log::info("Generated password: " . $randomPassword);
+
+        // Create the user
+        $user = User::create([
+            'first_name' => $validatedData['first_name'],
+            'last_name' => $validatedData['last_name'],
+            'bangla_name' => $validatedData['bangla_name'] ?? '',
+            'photo' => $validatedData['photo'] ?? null,
+            'email' => $validatedData['email'],
+            'mobile_number' => $validatedData['mobile_number'],
+            'dob' => $validatedData['dob'],
+            'nid' => $validatedData['nid'],
+            'gender' => $validatedData['gender'],
+            'blood_group' => $validatedData['blood_group'],
+            'education' => $validatedData['education'],
+            'profession' => $validatedData['profession'],
+            'skills' => $validatedData['skills'] ?? '',
+            'country' => $validatedData['country'],
+            'division' => $validatedData['division'],
+            'district' => $validatedData['district'],
+            'thana' => $validatedData['thana'],
+            'address' => $validatedData['address'],
+            'membership_type' => $validatedData['membership_type'],
+            'registration_fee' => $registrationFee, // Store the registration fee
+            'password' => Hash::make($randomPassword),
+            'terms' => 'accepted', // Set terms to "accepted"
+            'role_id' => 3, // Default user role
+        ]);
+
+        // Log the created user details
+        Log::info("User created successfully: ", ['user_id' => $user->id, 'email' => $user->email]);
+
+        // Mark email as verified
+        $user->email_verified_at = now();
+        $user->remember_token = Str::random(60);
+        $user->save();
+
+        // Send password to the user via SMS
+        Log::info("Sending SMS to user with number: {$user->mobile_number}");
+        $this->sendPasswordSMS($user->mobile_number, $randomPassword);
+
+        // Send password via email as well
+        Log::info("Sending email to user with email: {$user->email}");
+        $this->sendPasswordEmail($user, $randomPassword);
+
+        // Redirect to the success page after registration
+        Log::info("Redirecting to success page.");
+        return redirect()->route('register.success');
+        
+    } catch (\Exception $e) {
+        // Log error and throw exception
+        Log::error('User registration failed: ' . $e->getMessage());
+        throw new \Exception('Registration failed: ' . $e->getMessage());
+    }
+
+
+    
+}
+
+
+
+
 
     
 
@@ -209,8 +329,52 @@ class RegistrationController extends Controller
         }
     }
 
+
+
     public function success()
     {
         return view('frontend.registration-success');
     }
+
+
+
+
+
+
+  public function checkUnique(Request $request)
+{
+    $errors = [];
+
+    // Check for email
+    if (User::where('email', $request->email)->exists()) {
+        $errors['email'] = 'This email is already taken.';
+    }
+
+    // Check for mobile number
+    if (User::where('mobile_number', $request->mobile_number)->exists()) {
+        $errors['mobile_number'] = 'This mobile number is already taken.';
+    }
+
+    // Check for NID
+    if (User::where('nid', $request->nid)->exists()) {
+        $errors['nid'] = 'This NID is already taken.';
+    }
+
+    // Return response
+    if (count($errors) > 0) {
+        return response()->json(['success' => false, 'errors' => $errors]);
+    }
+
+    return response()->json(['success' => true]);
+}
+
+
+
+
+
+
+
+
+
+
 }

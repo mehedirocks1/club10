@@ -8,7 +8,7 @@
 <div class="container my-5">
   <h2>Registration Form</h2>
   <!-- Form with CSRF protection -->
-  <form class="row g-3 needs-validation" method="POST" action="{{ url('/sslcommerz/pay') }}" enctype="multipart/form-data" novalidate>
+  <form id="registrationForm" class="row g-3 needs-validation" method="POST" action="{{ url('/sslcommerz/pay') }}" enctype="multipart/form-data" novalidate>
     @csrf
 
     <!-- First Name -->
@@ -51,6 +51,7 @@
     <div class="col-md-4">
       <label for="email" class="form-label">Email Address</label>
       <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" id="email" value="{{ old('email') }}" required>
+      <div id="email-error" class="invalid-feedback"></div>
       @error('email') 
         <div class="invalid-feedback">{{ $message }}</div> 
       @enderror
@@ -60,6 +61,7 @@
     <div class="col-md-4">
       <label for="mobile" class="form-label">Mobile Number</label>
       <input type="tel" name="mobile_number" class="form-control @error('mobile_number') is-invalid @enderror" id="mobile" value="{{ old('mobile_number') }}" required>
+      <div id="mobile-error" class="invalid-feedback"></div>
       @error('mobile_number') 
         <div class="invalid-feedback">{{ $message }}</div> 
       @enderror
@@ -78,6 +80,7 @@
     <div class="col-md-4">
       <label for="nid" class="form-label">NID/Birth Cert/Passport</label>
       <input type="text" name="nid" class="form-control @error('nid') is-invalid @enderror" id="nid" value="{{ old('nid') }}" required>
+      <div id="nid-error" class="invalid-feedback"></div>
       @error('nid') 
         <div class="invalid-feedback">{{ $message }}</div> 
       @enderror
@@ -211,7 +214,7 @@
 <!-- Registration Fee -->
 <div class="col-md-4">
   <label for="registration_fee" class="form-label">Registration Fee</label>
-  <input type="text" name="registration_fee" id="registration_fee" class="form-control @error('registration_fee') is-invalid @enderror" readonly value="{{ old('registration_fee') }}">
+  <input type="text" name="registration_fee" id="registration_fee" class="form-control @error('registration_fee') is-invalid @enderror" disabled value="{{ old('registration_fee') }}">
   @error('registration_fee')
     <div class="invalid-feedback">{{ $message }}</div>
   @enderror
@@ -222,7 +225,7 @@
 <div class="col-md-12">
     <div class="form-check">
         <!-- Ensure the checkbox is checked if the user has already accepted the terms -->
-        <input type="checkbox" class="form-check-input @error('terms') is-invalid @enderror" name="terms" id="terms" {{ old('terms') ? 'checked' : '' }} value="1" required>
+        <input type="checkbox" class="form-check-input @error('terms') is-invalid @enderror" name="terms" id="terms" {{ old('terms') ? 'checked' : '' }} required>
         <label class="form-check-label" for="terms">I accept the terms and conditions</label>
         @error('terms') 
             <div class="invalid-feedback">{{ $message }}</div> 
@@ -234,13 +237,12 @@
 
     <!-- Submit Button -->
     <div class="col-md-12">
-      <button type="submit" class="btn btn-primary">Submit</button>
+      <button type="submit" id="submitBtn" class="btn btn-primary">Submit</button>
     </div>
 
   </form>
 </div>
 
-@endsection
 
 
 <!-- JavaScript to update the registration fee based on membership type -->
@@ -275,3 +277,73 @@
     updateRegistrationFee();
   });
 </script>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+  // Check if email, mobile, or NID exists in the DB before submission
+  $('#registrationForm').on('submit', function(event) {
+    event.preventDefault(); // Prevent form submission
+
+    var email = $('#email').val();
+    var mobile = $('#mobile').val();
+    var nid = $('#nid').val();
+
+    // Reset previous error messages
+    $('#email-error').text('');
+    $('#mobile-error').text('');
+    $('#nid-error').text('');
+
+    // Disable submit button during check
+    $('#submitBtn').prop('disabled', true);
+
+    // Perform AJAX requests to check if values exist in the DB
+    $.ajax({
+      url: "{{ route('check.unique') }}", // Ensure the route is defined in your routes/web.php
+      method: 'POST',
+      data: {
+        _token: '{{ csrf_token() }}',
+        email: email,
+        mobile_number: mobile,
+        nid: nid
+      },
+      success: function(response) {
+        // If no errors, submit the form
+        if (response.success) {
+          $('#registrationForm')[0].submit(); // Submit the form after successful check
+        } else {
+          // Show error messages for existing fields
+          if (response.errors.email) {
+            $('#email-error').text(response.errors.email);
+            $('#email').addClass('is-invalid');
+          }
+          if (response.errors.mobile_number) {
+            $('#mobile-error').text(response.errors.mobile_number);
+            $('#mobile').addClass('is-invalid');
+          }
+          if (response.errors.nid) {
+            $('#nid-error').text(response.errors.nid);
+            $('#nid').addClass('is-invalid');
+          }
+          // Enable submit button after the check
+          $('#submitBtn').prop('disabled', false);
+        }
+      },
+      error: function() {
+        alert('An error occurred while checking uniqueness. Please try again later.');
+        $('#submitBtn').prop('disabled', false);
+      }
+    });
+  });
+
+  // Remove is-invalid class when user starts typing
+  $('#email, #mobile, #nid').on('input', function() {
+    $(this).removeClass('is-invalid');
+    $(this).next('.invalid-feedback').text('');
+  });
+});
+</script>
+
+
+@endsection
